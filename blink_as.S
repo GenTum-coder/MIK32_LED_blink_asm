@@ -105,6 +105,7 @@
 .equ PIN_LED2,           7			# LED2 управляется выводом PORT_2_7
 .equ PIN_button,         6			# LED2 управляется выводом PORT_2_6
 .equ delay1,        100000			# delay 100000 times
+.equ delay2,            10			# delay     10 times for RISC-V simulator "QtRVSim" 
 
 # CL_SIZE = 0x20 (32)
 
