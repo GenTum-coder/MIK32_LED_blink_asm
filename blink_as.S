@@ -104,10 +104,9 @@
 
 .equ PIN_LED2,           7			# LED2 управляется выводом PORT_2_7
 .equ PIN_button,         6			# LED2 управляется выводом PORT_2_6
-.equ delay1,        100000			# delay 100000 times
-.equ delay2,            10			# delay     10 times for RISC-V simulator "QtRVSim" 
+.equ count1,        100000			# delay 100000 counts
+.equ count2,            10			# delay     10 counts, for RISC-V simulator "QtRVSim" 
 
-# CL_SIZE = 0x20 (32)
 
 _start:
 #00000000 <_start>:
@@ -116,24 +115,24 @@ _start:
 	li   a1, 0xc80		# c80 <__TEXT_END__>
 	li   a2, 0xc80		# c80 <__TEXT_END__>
 	la   a3, RAM_BASE_ADDRESS
-	j    m1_2	#0x23c	#0x200+0x32	#32 #<CL_SIZE+0x12>
+	j    m1_2
 m1_1:
 	lw   t0, 0(a1)
 	sw   t0, 0(a3) # 2000000 <__DATA_START__>
 	addi a1, a1, 4
 	addi a3, a3, 4
 m1_2:
-	bltu a1, a2, m1_1	#26 #<CL_SIZE+0x6> bltu - unsigned blt - signed
+	bltu a1, a2, m1_1	# bltu - unsigned, blt - signed
 	la   a1, RAM_BASE_ADDRESS
 	la   a2, RAM_BASE_ADDRESS + 32
-	j    m1_4	#0x4e #<CL_SIZE+0x2e>
+	j    m1_4
 m1_3:
 	# clear memory 0x2000000 - 0x2000032
-	sw   zero, 0(a1) # 2000000 <__DATA_START__>
+	sw   zero, 0(a1)
 	addi a1, a1, 4
 m1_4:
-	bltu a1, a2, m1_3	#48 #<CL_SIZE+0x28>
-	call main # b4a <main>
+	bltu a1, a2, m1_3
+	call main #
 	ret
 
 main:
@@ -141,27 +140,27 @@ main:
 	addi sp, sp, -16
 	sw   ra, 12(sp)
 	call initClock
-	la   a5, PAD_CONFIG
-	lw   a4, 0(a5) # 50c08 <__TEXT_END__+0x4ff88>
-	la   a3, 0x4000		# (1 << (2 * PIN_LED2))
-	or   a4, a4, a3		# (a4) | (1 << (2 * PIN_LED2)); // Установка порта 2 в режим GPIO
+	la   a5, PAD_CONFIG			# 0x00050c00
+	lw   a4, 0(a5)
+	la   a3, 0x4000				# (1 << (2 * PIN_LED2))
+	or   a4, a4, a3				# (a4) | (1 << (2 * PIN_LED2)); // Установка порта 2 в режим GPIO
 	sw   a4, 0(a5)
 	lw   a4, 0(a5)
-	la   a3, 0x1000		# (1 << (2 * PIN_button))
-	or   a4, a4, a3		# (a4) | (1 << (2 * PIN_button)); // Установка порта 2 в режим GPIO
+	la   a3, 0x1000				# (1 << (2 * PIN_button))
+	or   a4, a4, a3				# (a4) | (1 << (2 * PIN_button)); // Установка порта 2 в режим GPIO
 	sw   a4, 0(a5)
-	la   a5, GPIO_2		# 0x84800
-	li   a4, 128		# 1 << PIN_LED2
-	sw   a4, 8(a5)		# GPIO_2 + DIRECTION_OUT (84808 <__TEXT_END__+0x83b88>)
-	li   a4, 64			# 1 << PIN_button
-	sw   a4, 12(a5)		# GPIO_2 + DIRECTION_IN  (8480C)
+	la   a5, GPIO_2				# 0x84800
+	li   a4, 128				# 1 << PIN_LED2
+	sw   a4, 8(a5)				# GPIO_2 + DIRECTION_OUT (0x84808)
+	li   a4, 64					# 1 << PIN_button
+	sw   a4, 12(a5)				# GPIO_2 + DIRECTION_IN  (0x8480C)
 m2_1:
 	call ledBlink
 	j    m2_1
 
 initClock:
 #00000182 <initClock>:
-	la   a5, PM_BASE_ADDRESS
+	la   a5, PM_BASE_ADDRESS	# 0x00050000
 	lw   a4, 28(a5)				# a4 <- [PM_BASE_ADDRESS + CLK_APB_P_SET]
 	lui  a3, 0x4				# a3 <- PM_CLOCK_GPIO_2_M (0x4000)
 	addi sp, sp, -16			# sp <- sp - 16
@@ -186,22 +185,26 @@ m3_2:
 
 ledBlink:
 #000001ae <ledBlink>:
-	la   a5, GPIO_2 + GPIO_OUTPUT
+	la   a5, GPIO_2 + GPIO_OUTPUT	# 0x00084800 + 0x10 = 0x00084810
 	lw   a4, 0(a5)
 	addi sp, sp, -32
 	sw   ra, 28(sp)
 	ori  a4, a4, 128		# 1 << PIN_LED2
 	sw   a4, 0(a5)
-	li   a5, delay1
+	# for (volatile int i = 0; i < count1; i++)
+	li   a5, count1
+	#li   a5, count2	# for RISC-V simulator "QtRVSim" 
 	sw   zero, 8(sp)
 m4_1:
 	lw   a4, 8(sp)
 	bge  a5, a4, m4_3
-	la   a5, GPIO_2 + GPIO_OUTPUT
+	la   a5, GPIO_2 + GPIO_OUTPUT	# 0x00084800 + 0x10 = 0x00084810
 	lw   a4, 0(a5)
 	andi a4, a4, -129		# ~(1 << PIN_LED2)
 	sw   a4, 0(a5)
-	li   a5, delay1
+	# for (volatile int i = 0; i < count1; i++)
+	li   a5, count1
+	#li   a5, count2	# for RISC-V simulator "QtRVSim" 
 	sw   zero, 12(sp)
 m4_2:
 	lw   a4, 12(sp)
